@@ -382,10 +382,9 @@ exports.handler = Alexa.SkillBuilders.custom()
         FallbackIntentHandler,
         SessionEndedRequestHandler,
         IntentReflectorHandler)
-    .addErrorHandlers(
-        ErrorHandler)
-    .addRequestInterceptors(LoadPersistentAttributesRequestInterceptor)
-    .addResponseInterceptors(SavePersistentAttributesResponseInterceptor)
+    .addErrorHandlers(ErrorHandler)
+    //.addRequestInterceptors(LoadPersistentAttributesRequestInterceptor)
+    //.addResponseInterceptors(SavePersistentAttributesResponseInterceptor)
     .withCustomUserAgent('sample/audioplayer-nodejs/v2.0')
     //.withPersistenceAdapter(
     //    new ddbAdapter.DynamoDbPersistenceAdapter({

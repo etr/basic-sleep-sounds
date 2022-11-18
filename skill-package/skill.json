@@ -19,16 +19,16 @@
       "isAvailableWorldwide": true,
       "locales": {
         "en-US": {
-          "description": "Sample skill using the AudioPlayer interface",
+          "description": "A simple sleep sounds skill",
           "examplePhrases": [
-            "Alexa open audio player sample"
+            "Alexa open manolo sleeps"
           ],
           "keywords": [],
-          "name": "basic sleep sounds",
-          "summary": "Sample Short Description"
+          "name": "manolo sleeps",
+          "summary": "A simple sleep sounds skill"
         }
       },
-      "testingInstructions": "Sample Testing Instructions."
+      "testingInstructions": "Launch using open manolo sleeps"
     }
   }
 }
