@@ -7,30 +7,14 @@
  * */
 const Alexa = require('ask-sdk-core');
 const AWS = require('aws-sdk');
-//const ddbAdapter = require('ask-sdk-dynamodb-persistence-adapter');
 const Util = require('./util.js');
 
-const podcastUrl = 'https://ianocaliforniahook.s3.us-west-1.amazonaws.com/sleepsounds/thunderstorm.mp3';
+const audioFile = "Media/thunderstorm.mp3";
+const fixedToken = 'sleep';
 
 function playAudio(handlerInput) {
-    //const playbackInfo = await getPlaybackInfo(handlerInput);
-
-    //const speakOutput = 'Playing the audio stream.';
-    const playBehavior = 'REPLACE_ALL';
-    
-    /**
-     * If your audio file is located on the S3 bucket in a hosted skill, you can use the line below to retrieve a presigned URL for the audio file.
-     * https://developer.amazon.com/docs/alexa/hosted-skills/alexa-hosted-skills-media-files.html
-     * 
-     * const podcastUrl = Util.getS3PreSignedUrl("Media/audio.mp3").replace(/&/g,'&amp;');
-     * 
-     * If you cannot play your own audio in place of the sample URL, make sure your audio file adheres to the guidelines:
-     * https://developer.amazon.com/docs/alexa/custom-skills/audioplayer-interface-reference.html#audio-stream-requirements
-    */
-
     return handlerInput.responseBuilder
-        //.speak(speakOutput)
-        .addAudioPlayerPlayDirective(playBehavior, podcastUrl, 'sample token', 0)
+        .addAudioPlayerPlayDirective('REPLACE_ALL', Util.getS3PreSignedUrl(audioFile), fixedToken, 0)
         .getResponse();
 }
 
@@ -40,12 +24,6 @@ const LaunchRequestHandler = {
     },
     handle(handlerInput) {
         return playAudio(handlerInput);
-        //const speakOutput = 'Welcome, you can say "play audio" to start listening to music. What would you like to do?';
-
-        //return handlerInput.responseBuilder
-        //    .speak(speakOutput)
-        //    .reprompt(speakOutput)
-        //    .getResponse();
     }
 };
 /**
@@ -146,50 +124,24 @@ const AudioPlayerEventHandler = {
     return handlerInput.requestEnvelope.request.type.startsWith('AudioPlayer.');
   },
   async handle(handlerInput) {
-    //const playbackInfo = await getPlaybackInfo(handlerInput);
-    
     const audioPlayerEventName = handlerInput.requestEnvelope.request.type.split('.')[1];
     console.log(`AudioPlayer event encountered: ${handlerInput.requestEnvelope.request.type}`);
     let needEnqueueing = false;
-    let returnResponseFlag = false;
     switch (audioPlayerEventName) {
-      case 'PlaybackStarted':
-        //playbackInfo.token = handlerInput.requestEnvelope.request.token;
-        //playbackInfo.inPlaybackSession = true;
-        //playbackInfo.hasPreviousPlaybackSession = true;
-        returnResponseFlag = true;
-        break;
-      case 'PlaybackFinished':
-        //playbackInfo.inPlaybackSession = false;
-        //playbackInfo.hasPreviousPlaybackSession = false;
-        //playbackInfo.nextStreamEnqueued = false;
-        returnResponseFlag = true;
-        break;
-      case 'PlaybackStopped':
-        //playbackInfo.token = handlerInput.requestEnvelope.request.token;
-        //playbackInfo.inPlaybackSession = true;
-        //playbackInfo.offsetInMilliseconds = handlerInput.requestEnvelope.request.offsetInMilliseconds;
-        break;
       case 'PlaybackNearlyFinished':
-        needEnqueueing = true;
-        break;
+        console.log('enqueuing the stream again to loop');
+        return handlerInput
+            .responseBuilder
+            .addAudioPlayerPlayDirective('ENQUEUE', Util.getS3PreSignedUrl(audioFile), fixedToken, 0, fixedToken)
+            .getResponse();
       case 'PlaybackFailed':
-        //playbackInfo.inPlaybackSession = false;
         console.log('Playback Failed : %j', handlerInput.requestEnvelope.request.error);
         break;
       default:
         break;
     }
-    //setPlaybackInfo(handlerInput, playbackInfo);
-
-    if (needEnqueueing) {
-        return handlerInput
-            .responseBuilder
-            .addAudioPlayerPlayDirective('ENQUEUE', podcastUrl, 'sample token', 0)
-            .getResponse();
-    } else {
-        return handlerInput.responseBuilder.getResponse();
-    }
+    
+    return handlerInput.responseBuilder.getResponse();
   },
 };
 
@@ -205,14 +157,13 @@ const PlaybackControllerHandler = {
     return handlerInput.requestEnvelope.request.type.startsWith('PlaybackController.');
   },
   async handle(handlerInput) {
-    //const playbackInfo = await getPlaybackInfo(handlerInput);
     const playBehavior = 'REPLACE_ALL';
     const playbackControllerEventName = handlerInput.requestEnvelope.request.type.split('.')[1];
     let response;
     switch (playbackControllerEventName) {
       case 'PlayCommandIssued':
         response = handlerInput.responseBuilder
-            .addAudioPlayerPlayDirective(playBehavior, podcastUrl, 'sample token', 0)
+            .addAudioPlayerPlayDirective(playBehavior, Util.getS3PreSignedUrl(audioFile), fixedToken, 0)
             .getResponse();
         break;
       case 'PauseCommandIssued':
@@ -223,7 +174,6 @@ const PlaybackControllerHandler = {
       default:
         break;
     }
-    //setPlaybackInfo(handlerInput, playbackInfo);
 
     console.log(`PlayCommandIssued event encountered: ${handlerInput.requestEnvelope.request.type}`);
     return response;
@@ -315,54 +265,6 @@ const ErrorHandler = {
     }
 };
 
-/* HELPER FUNCTIONS */
-
-//async function getPlaybackInfo(handlerInput) {
-//  const attributes = await handlerInput.attributesManager.getPersistentAttributes();
-//  return attributes.playbackInfo;
-//}
-//
-//async function setPlaybackInfo(handlerInput, playbackInfoObject) {
-//  await handlerInput.attributesManager.setPersistentAttributes({
-//      playbackInfo: playbackInfoObject
-//      });
-//}
-//
-//// Request and response interceptors using the DynamoDB table associated with Alexa-hosted skills
-//
-//const LoadPersistentAttributesRequestInterceptor = {
-//  async process(handlerInput) {
-//    const persistentAttributes = await handlerInput.attributesManager.getPersistentAttributes();
-//
-//    /**
-//     * Check if user is invoking the skill the first time and initialize preset values
-//        playbackInfo: {
-//              offsetInMilliseconds - this is used to set the offset of the audio file 
-//                        to save the position between sessions
-//              token - save an audio token for this play session
-//              inPlaybackSession - used to record the playback state of the session
-//              hasPreviousPlaybackSession - used to help confirm previous playback state
-//            }
-//    */
-//    if (Object.keys(persistentAttributes).length === 0) {
-//      handlerInput.attributesManager.setPersistentAttributes({
-//        playbackInfo: {
-//          offsetInMilliseconds: 0,
-//          token: 'sample-audio-token',
-//          inPlaybackSession: false,
-//          hasPreviousPlaybackSession: false,
-//        },
-//      });
-//    }
-//  },
-//};
-//
-//const SavePersistentAttributesResponseInterceptor = {
-//  async process(handlerInput) {
-//    await handlerInput.attributesManager.savePersistentAttributes();
-//  },
-//};
-
 /**
  * This handler acts as the entry point for your skill, routing all request and response
  * payloads to the handlers above. Make sure any new handlers or interceptors you've
@@ -383,14 +285,6 @@ exports.handler = Alexa.SkillBuilders.custom()
         SessionEndedRequestHandler,
         IntentReflectorHandler)
     .addErrorHandlers(ErrorHandler)
-    //.addRequestInterceptors(LoadPersistentAttributesRequestInterceptor)
-    //.addResponseInterceptors(SavePersistentAttributesResponseInterceptor)
     .withCustomUserAgent('sample/audioplayer-nodejs/v2.0')
-    //.withPersistenceAdapter(
-    //    new ddbAdapter.DynamoDbPersistenceAdapter({
-    //        tableName: process.env.DYNAMODB_PERSISTENCE_TABLE_NAME,
-    //        createTable: false,
-    //        dynamoDBClient: new AWS.DynamoDB({apiVersion: 'latest', region: process.env.DYNAMODB_PERSISTENCE_REGION})
-    //    })
-    //)
     .lambda();
+
