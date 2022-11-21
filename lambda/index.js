@@ -10,11 +10,21 @@ const AWS = require('aws-sdk');
 const Util = require('./util.js');
 
 const audioFile = "Media/thunderstorm.mp3";
+
+const linkValidityInSeconds = 86400; // one entire day - so no issues with enqueueing early.
 const fixedToken = 'sleep';
+
+function getAudioUrl(audioPath) {
+    if (audioPath.startsWith("http")) {
+        return audioPath;
+    } else {
+        return Util.getS3PreSignedUrl(audioPath, linkValidityInSeconds);
+    }
+}
 
 function playAudio(handlerInput) {
     return handlerInput.responseBuilder
-        .addAudioPlayerPlayDirective('REPLACE_ALL', Util.getS3PreSignedUrl(audioFile), fixedToken, 0)
+        .addAudioPlayerPlayDirective('REPLACE_ALL', getAudioUrl(audioFile), fixedToken, 0)
         .getResponse();
 }
 
@@ -126,17 +136,16 @@ const AudioPlayerEventHandler = {
   async handle(handlerInput) {
     const audioPlayerEventName = handlerInput.requestEnvelope.request.type.split('.')[1];
     console.log(`AudioPlayer event encountered: ${handlerInput.requestEnvelope.request.type}`);
-    let needEnqueueing = false;
     switch (audioPlayerEventName) {
       case 'PlaybackNearlyFinished':
         console.log('enqueuing the stream again to loop');
         return handlerInput
             .responseBuilder
-            .addAudioPlayerPlayDirective('ENQUEUE', Util.getS3PreSignedUrl(audioFile), fixedToken, 0, fixedToken)
+            .addAudioPlayerPlayDirective('ENQUEUE', getAudioUrl(audioFile), fixedToken, 0, fixedToken)
             .getResponse();
       case 'PlaybackFailed':
         console.log('Playback Failed : %j', handlerInput.requestEnvelope.request.error);
-        break;
+        return playAudio(handlerInput);
       default:
         break;
     }
@@ -162,9 +171,7 @@ const PlaybackControllerHandler = {
     let response;
     switch (playbackControllerEventName) {
       case 'PlayCommandIssued':
-        response = handlerInput.responseBuilder
-            .addAudioPlayerPlayDirective(playBehavior, Util.getS3PreSignedUrl(audioFile), fixedToken, 0)
-            .getResponse();
+        response = playAudio(handlerInput);
         break;
       case 'PauseCommandIssued':
         response = handlerInput.responseBuilder
